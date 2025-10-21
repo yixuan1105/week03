@@ -1,21 +1,46 @@
 <?php
 require_once "header.php";
-try {
-  require_once 'db.php';
-  $sql="SELECT * FROM job";
-  $result = mysqli_query($conn, $sql);
+require_once 'db.php';
+
+// 取得表單輸入
+$order = $_POST["order"] ?? "";
+$searchtxt = $_POST["searchtxt"] ?? "";
+
+// 防止 SQL Injection
+$order = mysqli_real_escape_string($conn, $order);
+$searchtxt = mysqli_real_escape_string($conn, $searchtxt);
+
+// 建立查詢 SQL
+$sql = "SELECT * FROM job WHERE 1";
+
+if (!empty($searchtxt)) {
+  $sql .= " AND (company LIKE '%$searchtxt%' OR content LIKE '%$searchtxt%')";
+}
+
+if (!empty($order)) {
+  $sql .= " ORDER BY $order";
+}
+
+$result = mysqli_query($conn, $sql);
 ?>
-<form action="query.php" method="post" class="mb-3">
-  <select name="order" aria-label="選擇排序欄位">
+
+<!-- ===== 搜尋與排序表單 ===== -->
+<form method="post" class="mb-3">
+  <select name="order" aria-label="選擇排序欄位" class="form-select d-inline-block w-auto">
     <option selected value="">選擇排序欄位</option>
-    <option value="company">求才廠商</option>
-    <option value="content">求才內容</option>
-    <option value="pdate">刊登日期</option>
+    <option value="company" <?= $order=='company'?'selected':'' ?>>求才廠商</option>
+    <option value="content" <?= $order=='content'?'selected':'' ?>>求才內容</option>
+    <option value="pdate" <?= $order=='pdate'?'selected':'' ?>>刊登日期</option>
   </select>
-  <input placeholder="搜尋廠商及內容" type="text" name="searchtxt">
+
+  <input type="text" name="searchtxt" placeholder="搜尋廠商及內容"
+         class="form-control d-inline-block w-auto" style="width:250px;"
+         value="<?= htmlspecialchars($searchtxt) ?>">
+
   <input class="btn btn-primary" type="submit" value="搜尋">
 </form>
 
+<!-- ===== 資料表格 ===== -->
 <div class="container">
   <table id="jobTable" class="table table-bordered table-striped">
     <thead>
@@ -38,11 +63,7 @@ try {
 </div>
 
 <?php
-  mysqli_close($conn);
-}
-catch(Exception $e) {
-  echo 'Message: ' .$e->getMessage();
-}
+mysqli_close($conn);
 require_once "footer.php";
 ?>
 
@@ -59,13 +80,12 @@ require_once "footer.php";
 <script>
 $(document).ready(function() {
   $('#jobTable').DataTable({
-    // 載入繁體中文介面
     language: {
       url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
     },
-    pageLength: 10,   // 每頁顯示 10 筆
-    ordering: true,   // 啟用排序
-    searching: true   // 啟用搜尋
+    pageLength: 10,
+    ordering: true,
+    searching: true
   });
 });
 </script>
