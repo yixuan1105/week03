@@ -11,7 +11,7 @@ $name = $_SESSION['name'] ?? '';
 $fee = 0; // 初始化費用為 0
 
 // 根據身分與活動類型計算費用
-if ($role === 'teacher') {
+if ($role === 'T') {
   $fee = 0; // 老師免費
 } else {
   if ($event === 'tea') {
