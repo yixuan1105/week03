@@ -1,36 +1,54 @@
 <?php
-include 'header.php'; // header 裡面已經有 session_start()
-
-// 使用者資料（帳號、密碼、姓名、身分）
-$users = [
-  ["account" => "root",  "password" => "password", "name" => "yixuan", "role" => "teacher"],
-  ["account" => "413401039", "password" => "pw1", "name" => "包子姊姊",   "role" => "student"],
-  ["account" => "413401040", "password" => "pw2", "name" => "木箱哥哥",   "role" => "student"],
-];
+include 'header.php'; // header 裡面已有 session_start()
+require_once 'db.php'; // ✅ 資料庫連線 ($conn)
 
 // ====== 表單送出處理 ======
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  // 取得使用者輸入
   $account  = $_POST['account'] ?? '';
   $password = $_POST['password'] ?? '';
   $redirect = $_POST['redirect'] ?? 'index.php';
-  $found = false;
 
-  foreach ($users as $user) {
-    if ($user["account"] === $account && $user['password'] === $password) {
-      // ✅ 登入成功：把整個使用者資料放進 session
-      $_SESSION['name'] = $user["name"];
-      $_SESSION["role"] = $user["role"];
-      $found = true;
-
-      // ✅ 登入後回到原本想進的頁面
-      header("Location: $redirect");
-      exit;
-    }
+  // 檢查空值
+  if ($account === '' || $password === '') {
+    header("Location: login.php?msg=" . urlencode("請輸入帳號與密碼") .
+           "&redirect=" . urlencode($redirect) .
+           "&account=" . urlencode($account));
+    exit;
   }
 
-  // ❌ 登入失敗：回登入頁並顯示錯誤訊息
-  if (!$found) {
-    header("Location: login.php?msg=帳號或密碼錯誤&redirect=" . urlencode($redirect) . "&account=" . urlencode($account));
+  // ✅ 防止 SQL Injection：使用 mysqli_real_escape_string()
+  $account  = mysqli_real_escape_string($conn, $account);
+  $password = mysqli_real_escape_string($conn, $password);
+
+  // ✅ 查詢資料庫（作業提供的 SQL）
+  $sql = "SELECT * FROM user WHERE account = '$account'";
+  $result = mysqli_query($conn, $sql);
+
+  if ($result && mysqli_num_rows($result) > 0) {
+    $row = mysqli_fetch_assoc($result);
+
+    // 檢查密碼是否正確
+    if ($row['password'] === $password) {
+      // 登入成功 → 寫入 Session
+      $_SESSION['account'] = $row['account'];
+      $_SESSION['name'] = $row['name'];
+      $_SESSION['role'] = $row['role'];
+
+      header("Location: $redirect");
+      exit;
+    } else {
+      // 密碼錯誤
+      header("Location: login.php?msg=" . urlencode("密碼錯誤") .
+             "&redirect=" . urlencode($redirect) .
+             "&account=" . urlencode($account));
+      exit;
+    }
+  } else {
+    // 查無帳號
+    header("Location: login.php?msg=" . urlencode("查無此帳號") .
+           "&redirect=" . urlencode($redirect) .
+           "&account=" . urlencode($account));
     exit;
   }
 }
